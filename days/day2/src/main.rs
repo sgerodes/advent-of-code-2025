@@ -6,7 +6,5 @@ fn main() {
         .read_to_string(&mut input)
         .expect("failed to read input");
 
-    println!("Day 2 solution not implemented yet");
+    println!("Day solution not implemented yet");
 }
-
-
