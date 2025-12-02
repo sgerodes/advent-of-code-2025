@@ -53,29 +53,6 @@ EOF
 
 touch "$DAY_DIR/input.txt"
 
-# Update root workspace Cargo.toml to include the new day
-WORKSPACE_TOML="$ROOT_DIR/Cargo.toml"
-ENTRY="    \"days/day$DAY_NUM\","
-
-if grep -q "^$ENTRY\$" "$WORKSPACE_TOML"; then
-  echo "Workspace already lists days/day$DAY_NUM; skipping workspace update."
-  exit 0
-fi
-
-# Insert before the closing bracket of the members array
-tmp_file="$(mktemp)"
-awk -v entry="$ENTRY" '
-  /^\]/ && in_members {
-    print entry
-    in_members = 0
-  }
-  /members *= *\[/ {
-    in_members = 1
-  }
-  { print }
-' "$WORKSPACE_TOML" > "$tmp_file"
-mv "$tmp_file" "$WORKSPACE_TOML"
-
-echo "Created day$DAY_NUM in '$DAY_DIR' and updated workspace."
-
+echo "Created day$DAY_NUM in '$DAY_DIR'."
+echo "Add \"days/day$DAY_NUM\" to your root Cargo.toml workspace members"
 
