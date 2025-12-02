@@ -15,4 +15,4 @@ Each day lives as its own Cargo crate under `challenges/` with the puzzle descri
 
 | Day | Description (AoC) | Local Description                           | Crate / Entry Point                     |
 | --- | ----------------- |---------------------------------------------| ----------------------------------------|
-| 1 | [Secret Entrance](https://adventofcode.com/2025/day/1) | [`challenge`](challenges/day%201/README.md) | [`challenges/day 1/src/main.rs`](challenges/day%201/src/main.rs) |
+| 1 | [Secret Entrance](https://adventofcode.com/2025/day/1) | [`challenge`](challenges/day%201/README.md) | [`main.rs`](challenges/day%201/src/main.rs) |
