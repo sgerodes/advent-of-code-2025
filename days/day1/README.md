@@ -85,3 +85,24 @@ In this example, the dial points at 0 three times at the end of a rotation, plus
 Be careful: if the dial were pointing at 50, a single rotation like R1000 would cause the dial to point at 0 ten times before returning back to 50!
 
 Using password method 0x434C49434B, what is the password to open the door?
+
+### How to run
+
+This solution supports both Part 1 and Part 2. Specify which part to run as a command-line argument:
+
+- **Part 1** (from repo root):
+  ```bash
+  cargo run -p day1 --release part1 < days/day1/input.txt
+  ```
+
+- **Part 2** (from repo root):
+  ```bash
+  cargo run -p day1 --release part2 < days/day1/input.txt
+  ```
+
+- **From inside the day1 directory:**
+  ```bash
+  cd days/day1
+  cargo run --release part1 < input.txt
+  cargo run --release part2 < input.txt
+  ```
