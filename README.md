@@ -8,9 +8,6 @@ Each day lives as its own Cargo crate under `challenges/` with the puzzle descri
 - **From the repo root** (preferred):
   - Day 1:  
     `cargo run -p day1 --release < days/day1/input.txt`
-- **From within a specific day crate**:
-  - Day 1:  
-    `cd days/day1 && cargo run --release < input.txt`
 
 | Day | Description (AoC) | Local Description                  | Crate / Entry Point                |
 | --- | ----------------- |------------------------------------|------------------------------------|
