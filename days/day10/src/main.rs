@@ -1,5 +1,84 @@
 use std::io::{self, Read};
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Fraction {
+    num: i128,
+    den: i128,
+}
+
+impl Fraction {
+    fn new(num: i128, den: i128) -> Self {
+        let mut n = num;
+        let mut d = den;
+        if d < 0 {
+            n = -n;
+            d = -d;
+        }
+        let g = gcd(n, d);
+        Fraction {
+            num: n / g,
+            den: d / g,
+        }
+    }
+
+    fn from_i64(v: i64) -> Self {
+        Fraction { num: v as i128, den: 1 }
+    }
+
+    fn is_zero(&self) -> bool {
+        self.num == 0
+    }
+
+    fn is_integer(&self) -> bool {
+        self.num % self.den == 0
+    }
+
+    fn to_i64(&self) -> Option<i64> {
+        if self.is_integer() {
+            Some((self.num / self.den) as i64)
+        } else {
+            None
+        }
+    }
+}
+
+impl std::ops::Add for Fraction {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Fraction::new(self.num * rhs.den + rhs.num * self.den, self.den * rhs.den)
+    }
+}
+
+impl std::ops::Sub for Fraction {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Fraction::new(self.num * rhs.den - rhs.num * self.den, self.den * rhs.den)
+    }
+}
+
+impl std::ops::Mul for Fraction {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        Fraction::new(self.num * rhs.num, self.den * rhs.den)
+    }
+}
+
+impl std::ops::Div for Fraction {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        Fraction::new(self.num * rhs.den, self.den * rhs.num)
+    }
+}
+
+fn gcd(mut a: i128, mut b: i128) -> i128 {
+    while b != 0 {
+        let r = a % b;
+        a = b;
+        b = r;
+    }
+    a.abs()
+}
+
 fn parse_machine(line: &str) -> (Vec<bool>, Vec<Vec<usize>>, Vec<usize>) {
     let bracket_start = line.find('[').unwrap();
     let bracket_end = line.find(']').unwrap();
@@ -156,69 +235,172 @@ fn solve_machine(target: &[bool], buttons: &[Vec<usize>]) -> Option<usize> {
     solve_system_mod2(&mut a, &mut b)
 }
 
-fn solve_system_int_simple(joltages: &[usize], buttons: &[Vec<usize>]) -> Option<usize> {
-    let mut best = None;
-    let mut presses = vec![0; buttons.len()];
-    
-    fn search(
-        buttons: &[Vec<usize>],
-        joltages: &[usize],
-        presses: &mut Vec<usize>,
-        idx: usize,
-        current_sum: usize,
-        best: &mut Option<usize>,
-    ) {
-        if best.is_some() && current_sum >= best.unwrap() {
-            return;
+fn gaussian_rref(a: &[Vec<i64>], b: &[i64]) -> Option<(Vec<Vec<Fraction>>, Vec<usize>)> {
+    let n = a.len();
+    let m = a[0].len();
+    let mut mat = vec![vec![Fraction::from_i64(0); m + 1]; n];
+    for r in 0..n {
+        for c in 0..m {
+            mat[r][c] = Fraction::from_i64(a[r][c]);
         }
-        
-        if idx == buttons.len() {
-            let mut counters = vec![0; joltages.len()];
-            for (button_idx, &press_count) in presses.iter().enumerate() {
-                for &counter_idx in &buttons[button_idx] {
-                    counters[counter_idx] += press_count;
-                }
-            }
-            
-            if counters == joltages {
-                if best.is_none() || current_sum < best.unwrap() {
-                    *best = Some(current_sum);
-                }
-            }
-            return;
-        }
-        
-        let mut remaining = joltages.to_vec();
-        for (button_idx, &press_count) in presses.iter().enumerate() {
-            if button_idx < idx {
-                for &counter_idx in &buttons[button_idx] {
-                    remaining[counter_idx] = remaining[counter_idx].saturating_sub(press_count);
-                }
-            }
-        }
-        
-        let mut max_needed = 0;
-        for &counter_idx in &buttons[idx] {
-            max_needed = max_needed.max(remaining[counter_idx]);
-        }
-        
-        let upper = max_needed.min(best.unwrap_or(usize::MAX).saturating_sub(current_sum));
-        for val in 0..=upper {
-            presses[idx] = val;
-            search(buttons, joltages, presses, idx + 1, current_sum + val, best);
-            if best.is_some() && current_sum + val >= best.unwrap() {
+        mat[r][m] = Fraction::from_i64(b[r]);
+    }
+    let mut row = 0;
+    let mut pivot_cols = Vec::new();
+    for col in 0..m {
+        let mut pivot = None;
+        for r in row..n {
+            if !mat[r][col].is_zero() {
+                pivot = Some(r);
                 break;
             }
         }
-        presses[idx] = 0;
+        if let Some(p) = pivot {
+            mat.swap(row, p);
+            let pivot_val = mat[row][col].clone();
+            for c in col..=m {
+                mat[row][c] = mat[row][c].clone() / pivot_val.clone();
+            }
+            for r in 0..n {
+                if r != row && !mat[r][col].is_zero() {
+                    let factor = mat[r][col].clone();
+                    for c in col..=m {
+                        mat[r][c] = mat[r][c].clone() - factor.clone() * mat[row][c].clone();
+                    }
+                }
+            }
+            pivot_cols.push(col);
+            row += 1;
+        }
     }
-    
-    search(buttons, joltages, &mut presses, 0, 0, &mut best);
-    best
+    for r in 0..n {
+        let zero_row = (0..m).all(|c| mat[r][c].is_zero());
+        if zero_row && !mat[r][m].is_zero() {
+            return None;
+        }
+    }
+    Some((mat, pivot_cols))
 }
 
 fn solve_machine_joltage(joltages: &[usize], buttons: &[Vec<usize>]) -> Option<usize> {
-    solve_system_int_simple(joltages, buttons)
+    let n_counters = joltages.len();
+    let n_buttons = buttons.len();
+    let mut a = vec![vec![0i64; n_buttons]; n_counters];
+    for (button_idx, button) in buttons.iter().enumerate() {
+        for &counter_idx in button {
+            a[counter_idx][button_idx] = 1;
+        }
+    }
+    let b: Vec<i64> = joltages.iter().map(|&v| v as i64).collect();
+    let (mat, pivot_cols) = gaussian_rref(&a, &b)?;
+    let mut is_pivot = vec![false; n_buttons];
+    for &c in &pivot_cols {
+        is_pivot[c] = true;
+    }
+    let free_cols: Vec<usize> = (0..n_buttons).filter(|&c| !is_pivot[c]).collect();
+    let k = free_cols.len();
+    let mut free_bounds = vec![0usize; k];
+    for (idx, &col) in free_cols.iter().enumerate() {
+        let mut bound = usize::MAX;
+        for &counter in &buttons[col] {
+            bound = bound.min(joltages[counter]);
+        }
+        free_bounds[idx] = bound;
+    }
+    let mut best: Option<i64> = None;
+    let mut free_values = vec![0i64; k];
+    fn dfs(
+        idx: usize,
+        free_cols: &[usize],
+        is_pivot: &[bool],
+        mat: &[Vec<Fraction>],
+        free_bounds: &[usize],
+        free_values: &mut Vec<i64>,
+        best: &mut Option<i64>,
+    ) {
+        if idx == free_cols.len() {
+            let m = is_pivot.len();
+            let mut x = vec![Fraction::from_i64(0); m];
+            for (fv_idx, &col) in free_cols.iter().enumerate() {
+                x[col] = Fraction::from_i64(free_values[fv_idx]);
+            }
+            for row in 0..mat.len() {
+                let mut pivot_col = None;
+                for c in 0..m {
+                    if mat[row][c].num == 1 && mat[row][c].den == 1 {
+                        pivot_col = Some(c);
+                        break;
+                    }
+                }
+                if let Some(pc) = pivot_col {
+                    let mut val = mat[row][m].clone();
+                    for c in 0..m {
+                        if c != pc && !mat[row][c].is_zero() {
+                            val = val - mat[row][c].clone() * x[c].clone();
+                        }
+                    }
+                    if !val.is_integer() || val.num < 0 {
+                        return;
+                    }
+                    x[pc] = val;
+                } else {
+                    let mut lhs = Fraction::from_i64(0);
+                    for c in 0..m {
+                        if !mat[row][c].is_zero() {
+                            lhs = lhs + mat[row][c].clone() * x[c].clone();
+                        }
+                    }
+                    if lhs != mat[row][m] {
+                        return;
+                    }
+                }
+            }
+            let mut total = 0i64;
+            for v in x {
+                if !v.is_integer() {
+                    return;
+                }
+                let iv = v.to_i64().unwrap();
+                if iv < 0 {
+                    return;
+                }
+                total += iv;
+            }
+            if best.is_none() || total < best.unwrap() {
+                *best = Some(total);
+            }
+            return;
+        }
+        let col_idx = idx;
+        let ub = free_bounds[col_idx] as i64;
+        for val in 0..=ub {
+            if let Some(b) = *best {
+                if (free_values.iter().take(idx).map(|&v| v).sum::<i64>() + val) >= b {
+                    break;
+                }
+            }
+            free_values[col_idx] = val;
+            dfs(
+                idx + 1,
+                free_cols,
+                is_pivot,
+                mat,
+                free_bounds,
+                free_values,
+                best,
+            );
+        }
+    }
+    dfs(
+        0,
+        &free_cols,
+        &is_pivot,
+        &mat,
+        &free_bounds,
+        &mut free_values,
+        &mut best,
+    );
+    best.map(|v| v as usize)
 }
 
 fn solve_part1(input: &str) -> usize {
@@ -233,12 +415,18 @@ fn solve_part1(input: &str) -> usize {
 }
 
 fn solve_part2(input: &str) -> usize {
+    let debug = std::env::var("DEBUG_DAY10").is_ok();
     input
         .lines()
         .filter(|line| !line.trim().is_empty())
-        .map(|line| {
+        .enumerate()
+        .map(|(idx, line)| {
             let (_, buttons, joltages) = parse_machine(line);
-            solve_machine_joltage(&joltages, &buttons).unwrap_or(0)
+            let res = solve_machine_joltage(&joltages, &buttons);
+            if debug {
+                eprintln!("{idx}: {:?}", res);
+            }
+            res.unwrap_or(0)
         })
         .sum()
 }
